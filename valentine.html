@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Will you be my Valentine?</title>
+  <style>
+    :root{
+      --bg:#fff0f6;
+      --card:#fff;
+      --accent:#ff3366;
+      --muted:#555;
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg,#ffeef8 0%, var(--bg) 100%);
+      padding:20px;
+    }
+    .card{
+      width:min(720px,96vw);
+      max-width:720px;
+      background:var(--card);
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.08);
+      padding:36px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:32px;
+      color:var(--accent);
+      letter-spacing:0.3px;
+    }
+    p.lead{margin:0 0 24px;color:var(--muted);font-size:16px}
+    .stage{
+      position:relative;
+      height:260px;
+      margin-top:8px;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:12px 20px;
+      font-size:18px;
+      border-radius:10px;
+      border:none;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .12s ease, box-shadow .12s ease;
+      box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    }
+    .btn:active{transform:translateY(1px)}
+    .yes{
+      background:linear-gradient(90deg,#ff627b,#ff8aa0);
+      color:#fff;
+      font-weight:700;
+    }
+    .no{
+      position:absolute;
+      background:#fff;
+      color:var(--muted);
+      border:2px solid #f2f2f2;
+      padding:10px 16px;
+      min-width:110px;
+      text-align:center;
+    }
+    .note{font-size:13px;color:#999;margin-top:14px}
+    /* confetti pieces */
+    .confetti{
+      pointer-events:none;
+      position:absolute;
+      inset:0;
+      overflow:hidden;
+    }
+    .confetti span{
+      position:absolute;
+      width:8px;height:12px;
+      opacity:0.95;
+      transform-origin:center;
+      border-radius:2px;
+    }
+    @media (max-width:520px){
+      h1{font-size:24px}
+      .stage{height:200px}
+      .btn{font-size:16px;padding:10px 14px}
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>Will you be my Valentine?</h1>
+    <p class="lead">I think you're amazing. Pick an answer:</p>
+
+    <div class="stage" id="stage" aria-live="polite">
+      <div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);">
+        <button class="btn yes" id="yesBtn" aria-label="Yes">Yes 💖</button>
+      </div>
+
+      <button class="btn no" id="noBtn" aria-label="No">No 😅</button>
+
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
+    </div>
+
+    <p class="note">Tip: Try to click No 😉</p>
+  </div>
+
+  <script>
+    (function(){
+      const stage = document.getElementById('stage');
+      const noBtn = document.getElementById('noBtn');
+      const yesBtn = document.getElementById('yesBtn');
+      const confetti = document.getElementById('confetti');
+
+      // Place the No button initially at a random location
+      function placeNoAtRandom(){
+        const pad = 12;
+        const stageRect = stage.getBoundingClientRect();
+        const nbW = 120, nbH = 46; // approx
+        const x = Math.random() * (stageRect.width - nbW - pad*2) + pad;
+        const y = Math.random() * (stageRect.height - nbH - pad*2) + pad;
+        noBtn.style.left = x + 'px';
+        noBtn.style.top = y + 'px';
+      }
+      // ensure Yes is roughly centered
+      function centerYes(){
+        // handled by static placement in markup
+      }
+
+      // Move the No button to a new safe location (not overlapping the Yes button)
+      function moveNoAway(pointerX, pointerY){
+        const stageRect = stage.getBoundingClientRect();
+        const yesRect = yesBtn.getBoundingClientRect();
+        const nbW = noBtn.offsetWidth, nbH = noBtn.offsetHeight;
+        const pad = 12;
+        const maxTries = 30;
+        for(let i=0;i<maxTries;i++){
+          const x = Math.random() * (stageRect.width - nbW - pad*2) + pad;
+          const y = Math.random() * (stageRect.height - nbH - pad*2) + pad;
+          const absX = stageRect.left + x;
+          const absY = stageRect.top + y;
+          // distance from pointer
+          const dx = absX + nbW/2 - pointerX;
+          const dy = absY + nbH/2 - pointerY;
+          const dist = Math.hypot(dx,dy);
+          const yesOverlap = !(absX + nbW < yesRect.left || absX > yesRect.right || absY + nbH < yesRect.top || absY > yesRect.bottom);
+          if(dist > 140 && !yesOverlap){
+            noBtn.style.left = x + 'px';
+            noBtn.style.top = y + 'px';
+            return;
+          }
+        }
+        // fallback: just place at a corner
+        noBtn.style.left = pad + 'px';
+        noBtn.style.top = pad + 'px';
+      }
+
+      // Move when mouse gets close
+      function onPointerMove(e){
+        const pointerX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
+        const pointerY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
+        if(!pointerX || !pointerY) return;
+        const nbRect = noBtn.getBoundingClientRect();
+        const cx = nbRect.left + nbRect.width/2;
+        const cy = nbRect.top + nbRect.height/2;
+        const dist = Math.hypot(cx - pointerX, cy - pointerY);
+        if(dist < 120){ // threshold to run
+          moveNoAway(pointerX, pointerY);
+        }
+      }
+
+      // Also move on hover/focus for keyboard users
+      noBtn.addEventListener('mouseenter', function(e){
+        moveNoAway(e.clientX, e.clientY);
+      });
+      noBtn.addEventListener('focus', function(e){
+        // if focused via keyboard, move immediately
+        const stageRect = stage.getBoundingClientRect();
+        moveNoAway(stageRect.left + stageRect.width/2, stageRect.top + stageRect.height/2);
+      });
+
+      // For pointer movement over the stage
+      stage.addEventListener('mousemove', onPointerMove);
+      stage.addEventListener('touchstart', function(e){
+        onPointerMove(e.touches[0]);
+      }, {passive:true});
+      stage.addEventListener('touchmove', function(e){
+        onPointerMove(e.touches[0]);
+      }, {passive:true});
+
+      // If they somehow click No, move it again and give gentle nudge
+      noBtn.addEventListener('click', function(e){
+        // prevent click
+        e.preventDefault();
+        moveNoAway(e.clientX || 0, e.clientY || 0);
+      });
+
+      // Yes button reaction
+      yesBtn.addEventListener('click', function(){
+        showLove();
+      });
+
+      // show a thank you + simple confetti
+      function showLove(){
+        const card = document.querySelector('.card');
+        card.innerHTML = `
+          <h1>Yes! 💖</h1>
+          <p style="font-size:18px;color:#444;margin-top:6px">You just made my day. Happy Valentine's! 🌹</p>
+        `;
+        // generate some confetti inside the card
+        for(let i=0;i<24;i++){
+          const s = document.createElement('span');
+          s.style.left = (Math.random()*100) + '%';
+          s.style.top = (Math.random()*-20) + '%';
+          s.style.width = (6 + Math.random()*10) + 'px';
+          s.style.height = (8 + Math.random()*12) + 'px';
+          s.style.background = ['#ff5c7c','#ffd166','#6ee7b7','#8ec5ff','#b39ddb'][Math.floor(Math.random()*5)];
+          s.style.transform = `rotate(${Math.random()*360}deg)`;
+          s.style.animation = `fall ${2+Math.random()*2}s linear forwards`;
+          confetti.appendChild(s);
+        }
+        // simple falling animation sheet
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes fall{
+            to { transform: translateY(400px) rotate(240deg); opacity:0.9; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // initial placement
+      placeNoAtRandom();
+
+      // reposition when window resizes
+      window.addEventListener('resize', () => {
+        placeNoAtRandom();
+      });
+
+    })();
+  </script>
+</body>
+</html>
